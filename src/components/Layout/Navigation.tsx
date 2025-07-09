@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 
-const Navigation = () => {
+const Navigation = memo(() => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Memoize navigation items to prevent re-creation on every render
+  const lastScrollY = useRef(0);
+  
+  // Memoize navigation items
   const navigationItems = useMemo(() => [
     { path: '/', label: 'Home' },
     { path: '/sessions', label: 'Sessions' },
@@ -24,41 +25,49 @@ const Navigation = () => {
     { path: '/privacy-policy', label: 'Privacy Policy' },
   ], []);
 
-  // Memoize the isActive function to prevent re-creation
-  const isActive = useCallback((path: string) => location.pathname === path, [location.pathname]);
-
-  // Close mobile menu when clicking outside - optimized to prevent memory leaks
+  // Prevent body scroll when menu is open
   useEffect(() => {
-    if (!isOpen) return;
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      lastScrollY.current = window.scrollY;
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
+  // Close menu on route change
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
 
-    // Use passive listeners for better performance
-    document.addEventListener('mousedown', handleClickOutside, { passive: true });
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
   }, [isOpen]);
 
-  // Close mobile menu on route change - prevent unnecessary renders
-  useEffect(() => {
-    setIsOpen(false);
-  }, [location.pathname]);
-
-  const toggleMenu = useCallback(() => {
-    setIsOpen(prev => !prev);
-  }, []);
-
-  const closeMenu = useCallback(() => {
-    setIsOpen(false);
-  }, []);
+  const isActive = useCallback((path: string) => 
+    location.pathname === path
+  , [location.pathname]);
 
   return (
-    <nav ref={menuRef} className="bg-white shadow-lg fixed w-full z-50 top-0 border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+    <nav 
+      ref={menuRef} 
+      className="h-16 bg-white will-change-transform"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div className="flex justify-between h-full">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0">
               <img 
@@ -94,7 +103,7 @@ const Navigation = () => {
           {/* Mobile menu button */}
           <div className="lg:hidden flex items-center">
             <button
-              onClick={toggleMenu}
+              onClick={() => setIsOpen(!isOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-primary-600 hover:bg-gray-100 transition-colors duration-200"
               aria-expanded={isOpen}
               aria-label="Toggle navigation menu"
@@ -106,19 +115,22 @@ const Navigation = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu with improved transitions */}
       <div 
-        className={`lg:hidden transition-all duration-300 ease-in-out ${
-          isOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+        className={`lg:hidden fixed left-0 right-0 top-16 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-y-0' : '-translate-y-full'
         }`}
-        style={{ willChange: isOpen ? 'max-height, opacity' : 'auto' }}
+        style={{
+          maxHeight: 'calc(100vh - 4rem)',
+          overflowY: 'auto',
+          willChange: 'transform',
+        }}
       >
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t shadow-lg">
+        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           {navigationItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              onClick={closeMenu}
               className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
                 isActive(item.path)
                   ? 'bg-primary-600 text-white'
@@ -132,6 +144,8 @@ const Navigation = () => {
       </div>
     </nav>
   );
-};
+});
 
-export default memo(Navigation);
+Navigation.displayName = 'Navigation';
+
+export default Navigation;

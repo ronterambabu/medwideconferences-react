@@ -22,6 +22,16 @@ class ErrorBoundary extends Component<Props, State> {
     console.error('Error caught by boundary:', error, errorInfo);
   }
 
+  private handleReload = () => {
+    this.setState({ hasError: false, error: undefined }, () => {
+      window.location.reload();
+    });
+  };
+
+  public shouldComponentUpdate(nextProps: Props, nextState: State): boolean {
+    return this.state.hasError !== nextState.hasError || this.props.children !== nextProps.children;
+  }
+
   public render() {
     if (this.state.hasError) {
       return (
@@ -32,7 +42,7 @@ class ErrorBoundary extends Component<Props, State> {
               The application encountered an error. Please refresh the page.
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={this.handleReload}
               className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
             >
               Reload Page

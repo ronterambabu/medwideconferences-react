@@ -1,44 +1,52 @@
+import { memo, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout/Layout';
-import Home from './pages/Home';
-import Sessions from './pages/Sessions';
-import AbstractSubmission from './pages/AbstractSubmission';
-import Registration from './pages/Registration';
-import Speakers from './pages/Speakers';
-import OCM from './pages/OCM';
-import Venue from './pages/Venue';
-import Brochure from './pages/Brochure';
-import AboutUs from './pages/AboutUs';
-import TentativeProgram from './pages/TentativeProgram';
-import ContactUs from './pages/ContactUs';
-import Sponsorship from './pages/Sponsorship';
-import PrivacyPolicy from './pages/PrivacyPolicy';
+import { routes } from './routes/config';
+import { EnterpriseSessionProvider } from './Context/EnterpriseSessionContext';
+import AdminLogin from './components/admin/AdminLogin';
+import AdminDashboard from './components/admin/AdminDashboard';
 
-function App() {
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-pulse text-primary-600">Loading...</div>
+  </div>
+);
+
+const App = memo(() => {
   return (
     <ErrorBoundary>
-      <Router>
-        <Layout>
+      <EnterpriseSessionProvider>
+        <Router>
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/sessions" element={<Sessions />} />
-            <Route path="/abstract-submission" element={<AbstractSubmission />} />
-            <Route path="/registration" element={<Registration />} />
-            <Route path="/speakers" element={<Speakers />} />
-            <Route path="/ocm" element={<OCM />} />
-            <Route path="/venue" element={<Venue />} />
-            <Route path="/brochure" element={<Brochure />} />
-            <Route path="/about-us" element={<AboutUs />} />
-            <Route path="/tentative-program" element={<TentativeProgram />} />
-            <Route path="/contact-us" element={<ContactUs />} />
-            <Route path="/sponsorship" element={<Sponsorship />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            {/* Admin routes - outside of main layout */}
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/admin-dashboard/*" element={<AdminDashboard />} />
+            
+            {/* Main application routes */}
+            <Route path="/*" element={
+              <Layout>
+                <Suspense fallback={<LoadingFallback />}>
+                  <Routes>
+                    {routes.map(({ path, component: Component }) => (
+                      <Route
+                        key={path}
+                        path={path}
+                        element={<Component />}
+                      />
+                    ))}
+                  </Routes>
+                </Suspense>
+              </Layout>
+            } />
           </Routes>
-        </Layout>
-      </Router>
+        </Router>
+      </EnterpriseSessionProvider>
     </ErrorBoundary>
   );
-}
+});
+
+App.displayName = 'App';
 
 export default App;
